@@ -1,70 +1,426 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="cs">
+
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta charset="UTF-8">
+
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Sklad kamenů</title>
+
 <style>
-body{font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:18px;background:#f7f7f7;color:#222}
-h1{font-size:24px}
-input{width:100%;box-sizing:border-box;padding:15px;font-size:20px;border:1px solid #bbb;border-radius:10px}
-button{padding:18px;margin:6px 3px;font-size:20px;border:0;border-radius:12px;background:#e6e6e6}
-.big{width:100%;font-size:24px}
-.minus{font-weight:bold}
-.card{background:white;border-radius:16px;padding:18px;margin-top:16px;box-shadow:0 2px 10px #0001}
-.stock{font-size:42px;font-weight:bold;text-align:center;margin:12px}
-.error{color:#b00020;font-weight:bold}
+
+body {
+  font-family: Arial, sans-serif;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 20px;
+  background: #f5f5f5;
+}
+
+h1 {
+  margin-bottom: 20px;
+}
+
+.card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+
+input,
+button,
+select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin-top: 8px;
+  margin-bottom: 12px;
+  font-size: 16px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.result {
+  margin-top: 20px;
+}
+
+.error {
+  color: #b00020;
+}
+
+.ok {
+  color: #087f23;
+}
+
 </style>
+
 </head>
+
 <body>
-<h1>💎 Sklad briliantů</h1>
-<input id="code" placeholder="Naskenuj / zadej kód" autocomplete="off">
-<button class="big" onclick="loadStone()">🔎 Zjistit stav</button>
-<div id="result"></div>
+
+<div class="card">
+
+<h1>💎 Sklad kamenů</h1>
+
+<label>Kód kamene</label>
+
+<input
+  id="code"
+  placeholder="např. D-0001"
+  autocomplete="off"
+>
+
+<button onclick="lookup()">
+  Vyhledat
+</button>
+
+<div id="result"
+     class="result">
+</div>
+
+</div>
+
+
+<iframe
+  name="apiFrame"
+  id="apiFrame"
+  style="display:none">
+</iframe>
+
+
+<form
+  id="apiForm"
+  method="POST"
+  target="apiFrame"
+  style="display:none">
+
+  <input
+    type="hidden"
+    name="payload"
+    id="payload">
+
+</form>
+
 
 <script>
-let stone=null;
 
-function loadStone(){
-  const code=document.getElementById('code').value.trim();
-  if(!code) return;
-  google.script.run
-    .withSuccessHandler(showStone)
-    .withFailureHandler(showError)
-    .getStone(code);
+/************************************************************
+ * JEDINÉ MÍSTO, KTERÉ BUDEŠ PROPOJOVAT
+ ************************************************************/
+
+const API_URL =
+"https://TVUJ-NOVY-APPS-SCRIPT-URL/exec";
+
+
+/************************************************************
+ * IDENTIFIKACE ZAŘÍZENÍ
+ ************************************************************/
+
+let deviceId =
+  localStorage.getItem("inventoryDeviceId");
+
+let deviceToken =
+  localStorage.getItem("inventoryDeviceToken");
+
+
+if (!deviceId) {
+
+  deviceId =
+    crypto.randomUUID();
+
+  localStorage.setItem(
+    "inventoryDeviceId",
+    deviceId
+  );
+
 }
 
-function showStone(s){
-  stone=s;
-  document.getElementById('result').innerHTML=`
-    <div class="card">
-      <div><b>${esc(s.kind)} · ${esc(s.shape)}</b></div>
-      <div>${esc(s.size)} mm · ${esc(s.color)} · ${esc(s.clarity)}</div>
-      <div class="stock">${s.stock} ks</div>
-      <button class="big minus" onclick="move(-1)">− 1 ks</button>
-      <button class="big minus" onclick="move(-2)">− 2 ks</button>
-      <button class="big minus" onclick="move(-5)">− 5 ks</button>
-      <button class="big" onclick="move(1)">+ 1 ks</button>
-    </div>`;
+
+/************************************************************
+ * POST DO APPS SCRIPTU
+ ************************************************************/
+
+function postToAppsScript(data) {
+
+  return new Promise((resolve, reject) => {
+
+    const requestId =
+      crypto.randomUUID();
+
+
+    const timeout =
+      setTimeout(() => {
+
+        window.removeEventListener(
+          "message",
+          listener
+        );
+
+        reject(
+          new Error(
+            "Server neodpověděl."
+          )
+        );
+
+      }, 30000);
+
+
+    function listener(event) {
+
+      if (
+        event.origin !==
+        "https://TVUJ-UCET.github.io"
+      ) {
+        return;
+      }
+
+
+      if (
+        !event.data ||
+        event.data.type !==
+        "inventory-api"
+      ) {
+        return;
+      }
+
+
+      clearTimeout(timeout);
+
+      window.removeEventListener(
+        "message",
+        listener
+      );
+
+
+      resolve(event.data);
+
+    }
+
+
+    window.addEventListener(
+      "message",
+      listener
+    );
+
+
+    const payload =
+      JSON.stringify({
+        ...data,
+        requestId: requestId
+      });
+
+
+    document
+      .getElementById("payload")
+      .value = payload;
+
+
+    const form =
+      document.getElementById("apiForm");
+
+
+    form.action =
+      API_URL;
+
+
+    form.submit();
+
+  });
+
 }
 
-function move(n){
-  if(!stone) return;
-  google.script.run
-    .withSuccessHandler(showStone)
-    .withFailureHandler(showError)
-    .moveStone(stone.code,n,'Mobil','Rychlá akce');
+
+/************************************************************
+ * VYHLEDÁNÍ
+ ************************************************************/
+
+async function lookup() {
+
+  const code =
+    document
+      .getElementById("code")
+      .value
+      .trim();
+
+
+  if (!code) {
+
+    showError(
+      "Zadej kód kamene."
+    );
+
+    return;
+  }
+
+
+  showMessage(
+    "Hledám..."
+  );
+
+
+  try {
+
+    const result =
+      await postToAppsScript({
+
+        action: "get",
+
+        code: code,
+
+        deviceId: deviceId,
+
+        token: deviceToken
+
+      });
+
+
+    if (
+      result.status !== "OK"
+    ) {
+
+      showError(
+        result.error ||
+        "Chyba."
+      );
+
+      return;
+    }
+
+
+    const stone =
+      result.data;
+
+
+    if (!stone) {
+
+      showError(
+        "Kámen nebyl nalezen."
+      );
+
+      return;
+    }
+
+
+    showStone(stone);
+
+
+  } catch (err) {
+
+    showError(
+      err.message
+    );
+
+  }
+
 }
 
-function showError(e){
-  document.getElementById('result').innerHTML='<div class="card error">'+esc(e.message||String(e))+'</div>';
+
+/************************************************************
+ * ZOBRAZENÍ
+ ************************************************************/
+
+function showStone(stone) {
+
+  document
+    .getElementById("result")
+    .innerHTML = `
+
+      <h2>${escapeHtml(stone.code)}</h2>
+
+      <p>
+        <strong>Druh:</strong>
+        ${escapeHtml(stone.type)}
+      </p>
+
+      <p>
+        <strong>Tvar:</strong>
+        ${escapeHtml(stone.shape)}
+      </p>
+
+      <p>
+        <strong>Velikost:</strong>
+        ${escapeHtml(stone.size)}
+      </p>
+
+      <p>
+        <strong>Barva:</strong>
+        ${escapeHtml(stone.color)}
+      </p>
+
+      <p>
+        <strong>Čistota:</strong>
+        ${escapeHtml(stone.clarity)}
+      </p>
+
+      <p>
+        <strong>Stav:</strong>
+        <strong>
+          ${escapeHtml(String(stone.quantity))}
+          ${escapeHtml(stone.unit)}
+        </strong>
+      </p>
+
+      <p>
+        <strong>Pozice:</strong>
+        ${escapeHtml(stone.location)}
+      </p>
+
+      <p>
+        <strong>Dodavatel:</strong>
+        ${escapeHtml(stone.supplier)}
+      </p>
+
+      <p>
+        ${escapeHtml(stone.note)}
+      </p>
+    `;
 }
 
-function esc(x){
-  return String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+
+/************************************************************
+ * POMOCNÉ FUNKCE
+ ************************************************************/
+
+function showMessage(message) {
+
+  document
+    .getElementById("result")
+    .innerHTML =
+      `<p>${escapeHtml(message)}</p>`;
+
 }
 
-document.getElementById('code').addEventListener('keydown',e=>{
-  if(e.key==='Enter') loadStone();
-});
+
+function showError(message) {
+
+  document
+    .getElementById("result")
+    .innerHTML =
+      `<p class="error">
+        ${escapeHtml(message)}
+      </p>`;
+
+}
+
+
+function escapeHtml(value) {
+
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+
+}
+
 </script>
+
 </body>
 </html>
