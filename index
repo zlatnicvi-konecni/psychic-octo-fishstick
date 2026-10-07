@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="cs">
 
 <head>
@@ -6,7 +7,7 @@
 <meta charset="UTF-8">
 
 <meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+   content="width=device-width, initial-scale=1.0">
 
 <title>Sklad kamenů</title>
 
@@ -71,9 +72,10 @@ button {
 <label>Kód kamene</label>
 
 <input
-  id="code"
-  placeholder="např. D-0001"
-  autocomplete="off"
+id="code"
+placeholder="např. D-0001"
+autocomplete="off"
+
 >
 
 <button onclick="lookup()">
@@ -86,13 +88,11 @@ button {
 
 </div>
 
-
 <iframe
   name="apiFrame"
   id="apiFrame"
   style="display:none">
 </iframe>
-
 
 <form
   id="apiForm"
@@ -100,22 +100,29 @@ button {
   target="apiFrame"
   style="display:none">
 
-  <input
-    type="hidden"
-    name="payload"
-    id="payload">
+<input
+ type="hidden"
+ name="payload"
+ id="payload">
 
 </form>
-
 
 <script>
 
 /************************************************************
- * JEDINÉ MÍSTO, KTERÉ BUDEŠ PROPOJOVAT
+ * NOVÝ SKLAD – PROPOJENÍ
  ************************************************************/
 
 const API_URL =
-"https://TVUJ-NOVY-APPS-SCRIPT-URL/exec";
+"https://script.google.com/macros/s/AKfycbwyKqA4HwTpu5laHjqAz8QM45-2pAWEdpiK5e8yBpWvMcpdBQRv8wAdDucx3VTgySM/exec";
+
+
+/************************************************************
+ * POVOLENÝ GITHUB ORIGIN
+ ************************************************************/
+
+const GITHUB_ORIGIN =
+"https://zlatnicvi-konecni.github.io";
 
 
 /************************************************************
@@ -174,8 +181,7 @@ function postToAppsScript(data) {
     function listener(event) {
 
       if (
-        event.origin !==
-        "https://TVUJ-UCET.github.io"
+        event.origin !== GITHUB_ORIGIN
       ) {
         return;
       }
