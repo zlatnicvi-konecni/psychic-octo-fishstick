@@ -639,235 +639,257 @@
   /* =======================================================
      KOMUNIKACE S APPS SCRIPT
      ======================================================= */
+function postToAppsScript(request) {
 
-  function postToAppsScript(
-    request
-  ) {
+  return new Promise(function(resolve, reject) {
 
-    return new Promise(
-      function(resolve, reject) {
-
-        const frame =
-          document.createElement(
-            'iframe'
+    const requestId =
+      (
+        window.crypto &&
+        typeof crypto.randomUUID === 'function'
+      )
+        ? crypto.randomUUID()
+        : (
+            Date.now().toString(36) +
+            '-' +
+            Math.random().toString(36).slice(2)
           );
 
-        frame.name =
-          'inventory_api_' +
-          Date.now() +
-          '_' +
-          Math.random()
-            .toString(36)
-            .slice(2);
 
-        frame.style.display =
-          'none';
+    const fullRequest = {
+      ...request,
+      requestId: requestId
+    };
 
-        document.body.appendChild(
-          frame
+
+    const frame =
+      document.createElement('iframe');
+
+
+    frame.name =
+      'inventory_api_' +
+      Date.now() +
+      '_' +
+      Math.random()
+        .toString(36)
+        .slice(2);
+
+
+    frame.style.display =
+      'none';
+
+
+    document.body.appendChild(frame);
+
+
+    const form =
+      document.createElement('form');
+
+
+    form.method =
+      'POST';
+
+    form.action =
+      API_URL;
+
+    form.target =
+      frame.name;
+
+    form.style.display =
+      'none';
+
+
+    const input =
+      document.createElement('input');
+
+
+    input.type =
+      'hidden';
+
+    input.name =
+      'payload';
+
+    input.value =
+      JSON.stringify(fullRequest);
+
+
+    form.appendChild(input);
+
+    document.body.appendChild(form);
+
+
+    let finished = false;
+
+
+    function cleanup() {
+
+      if (finished) {
+        return;
+      }
+
+      finished = true;
+
+
+      window.removeEventListener(
+        'message',
+        onMessage
+      );
+
+
+      try {
+        form.remove();
+      } catch (_) {}
+
+
+      try {
+        frame.remove();
+      } catch (_) {}
+
+    }
+
+
+    function isAppsScriptOrigin(origin) {
+
+      if (
+        origin ===
+        'https://script.google.com'
+      ) {
+        return true;
+      }
+
+
+      if (
+        origin ===
+        'https://script.googleusercontent.com'
+      ) {
+        return true;
+      }
+
+
+      /*
+       * Apps Script může použít
+       * dynamický host ve tvaru:
+       *
+       * https://xxxxx-script.googleusercontent.com
+       */
+
+      return /^https:\/\/[a-z0-9-]+-script\.googleusercontent\.com$/i
+        .test(origin);
+
+    }
+
+
+    function onMessage(event) {
+
+      if (
+        !isAppsScriptOrigin(
+          event.origin
+        )
+      ) {
+        return;
+      }
+
+
+      const data =
+        event.data;
+
+
+      if (
+        !data ||
+        data.type !== 'inventory-api'
+      ) {
+        return;
+      }
+
+
+      /*
+       * Tohle je důležité:
+       * přijmeme pouze odpověď patřící
+       * k našemu konkrétnímu požadavku.
+       */
+
+      if (
+        data.requestId !== requestId
+      ) {
+        return;
+      }
+
+
+      cleanup();
+
+
+      if (
+        data.status === 'OK'
+      ) {
+
+        resolve(
+          data.data
         );
 
+      } else {
 
-        const form =
-          document.createElement(
-            'form'
-          );
-
-        form.method =
-          'POST';
-
-        form.action =
-          API_URL;
-
-        form.target =
-          frame.name;
-
-        form.style.display =
-          'none';
-
-
-        const input =
-          document.createElement(
-            'input'
-          );
-
-        input.type =
-          'hidden';
-
-        input.name =
-          'payload';
-
-        input.value =
-          JSON.stringify(request);
-
-
-        form.appendChild(
-          input
+        reject(
+          new Error(
+            data.error ||
+            'SERVER_ERROR'
+          )
         );
 
-        document.body.appendChild(
-          form
-        );
+      }
+
+    }
 
 
-        let finished = false;
+    window.addEventListener(
+      'message',
+      onMessage
+    );
 
 
-        function cleanup() {
+    /*
+     * Maximální čekání:
+     * 3 minuty.
+     */
+
+    const timeout =
+      setTimeout(
+        function() {
 
           if (finished) {
             return;
           }
 
-          finished = true;
-
-          window.removeEventListener(
-            'message',
-            onMessage
-          );
-
-          setTimeout(
-            function() {
-
-              try {
-                form.remove();
-              } catch (_) {}
-
-              try {
-                frame.remove();
-              } catch (_) {}
-
-            },
-            300
-          );
-
-        }
-
-
-        function onMessage(event) {
-
-          /*
-           * Apps Script může doručit odpověď
-           * z obou těchto originů.
-           */
-
-          if (
-            !API_ORIGINS.has(
-              event.origin
-            )
-          ) {
-            return;
-          }
-
-
-          /*
-           * Ověříme zároveň, že zpráva
-           * přišla z našeho iframe.
-           */
-
-          if (
-            event.source !==
-            frame.contentWindow
-          ) {
-            return;
-          }
-
-
-          const data =
-            event.data;
-
-
-          if (
-            !data ||
-            data.type !==
-            'inventory-api'
-          ) {
-            return;
-          }
-
-
-          cleanup();
-
-
-          if (
-            data.status === 'OK'
-          ) {
-
-            resolve(
-              data.data
-            );
-
-          } else {
-
-            reject(
-              new Error(
-                data.error ||
-                'SERVER_ERROR'
-              )
-            );
-
-          }
-
-        }
-
-
-        window.addEventListener(
-          'message',
-          onMessage
-        );
-
-
-        /*
-         * Timeout = 3 minuty
-         */
-
-        const timeout =
-          setTimeout(
-            function() {
-
-              if (finished) {
-                return;
-              }
-
-              cleanup();
-
-              reject(
-                new Error(
-                  'TIMEOUT'
-                )
-              );
-
-            },
-            REQUEST_TIMEOUT_MS
-          );
-
-
-        /*
-         * Odeslání formuláře
-         */
-
-        try {
-
-          form.submit();
-
-        } catch (error) {
-
-          clearTimeout(
-            timeout
-          );
-
           cleanup();
 
           reject(
-            error
+            new Error(
+              'TIMEOUT'
+            )
           );
 
-        }
+        },
+        180000
+      );
 
-      }
-    );
 
-  }
+    try {
+
+      form.submit();
+
+    } catch (error) {
+
+      clearTimeout(timeout);
+
+      cleanup();
+
+      reject(error);
+
+    }
+
+  });
+
+}
+  
 
 
   /* =======================================================
