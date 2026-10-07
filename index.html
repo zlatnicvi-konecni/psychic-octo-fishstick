@@ -1,430 +1,823 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="cs">
-
 <head>
-
 <meta charset="UTF-8">
-
-<meta name="viewport"
-   content="width=device-width, initial-scale=1.0">
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sklad kamenů</title>
 
 <style>
-
-body {
-  font-family: Arial, sans-serif;
-  max-width: 700px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f5f5f5;
+*{box-sizing:border-box}
+body{
+  font-family:Arial,sans-serif;
+  max-width:560px;
+  margin:auto;
+  padding:16px;
+  background:#f5f5f5;
+  color:#222
 }
-
-h1 {
-  margin-bottom: 20px;
+h1{font-size:25px;margin:4px 0 18px}
+h2{font-size:20px;margin:0 0 12px}
+.card{
+  background:#fff;
+  border-radius:16px;
+  padding:18px;
+  margin-bottom:16px;
+  box-shadow:0 2px 10px #0001
 }
-
-.card {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+input,select,textarea{
+  width:100%;
+  padding:13px;
+  margin:5px 0 10px;
+  font-size:17px;
+  border:1px solid #bbb;
+  border-radius:10px;
+  background:#fff
 }
-
-input,
-button,
-select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 12px;
-  margin-top: 8px;
-  margin-bottom: 12px;
-  font-size: 16px;
+textarea{min-height:80px;resize:vertical}
+button{
+  border:0;
+  border-radius:11px;
+  padding:14px 16px;
+  margin:4px 2px;
+  font-size:17px;
+  cursor:pointer;
+  background:#e5e5e5
 }
-
-button {
-  cursor: pointer;
+button.primary{
+  width:100%;
+  font-size:20px;
+  font-weight:bold
 }
-
-.result {
-  margin-top: 20px;
+button.minus{font-weight:bold}
+.row{
+  display:flex;
+  gap:7px;
 }
-
-.error {
-  color: #b00020;
+.row button{flex:1}
+.hidden{display:none}
+.status{
+  font-size:14px;
+  color:#666;
+  margin-bottom:12px
 }
-
-.ok {
-  color: #087f23;
+.stock{
+  font-size:46px;
+  font-weight:bold;
+  text-align:center;
+  margin:12px 0
 }
-
+.details{
+  line-height:1.6;
+  font-size:17px
+}
+.code{
+  font-size:24px;
+  font-weight:bold;
+  text-align:center;
+  letter-spacing:1px;
+  margin:8px 0
+}
+.error{
+  color:#b00020;
+  font-weight:bold
+}
+.success{
+  color:#126b28;
+  font-weight:bold
+}
+.small{
+  font-size:13px;
+  color:#777
+}
+hr{
+  border:0;
+  border-top:1px solid #ddd;
+  margin:18px 0
+}
+summary{
+  cursor:pointer;
+  font-weight:bold;
+  font-size:18px
+}
 </style>
-
 </head>
 
 <body>
 
-<div class="card">
-
 <h1>💎 Sklad kamenů</h1>
+<div id="status" class="status">Kontroluji připojení…</div>
 
-<label>Kód kamene</label>
+<!-- REGISTRACE -->
+<div id="registration" class="card hidden">
+  <h2>Autorizace telefonu</h2>
 
-<input
-id="code"
-placeholder="např. D-0001"
-autocomplete="off"
+  <div>
+    Tento telefon ještě není autorizovaný.
+    V Apps Scriptu spusť funkci <b>createRegistrationKey()</b>
+    a sem vlož vygenerovaný klíč.
+  </div>
 
->
+  <input id="registrationKey"
+         placeholder="Registrační klíč"
+         autocomplete="off">
 
-<button onclick="lookup()">
-  Vyhledat
-</button>
+  <button class="primary" onclick="registerDevice()">
+    🔐 Registrovat tento telefon
+  </button>
 
-<div id="result"
-     class="result">
+  <div id="registrationResult" class="small"></div>
 </div>
 
+<!-- HLAVNÍ APLIKACE -->
+<div id="app" class="hidden">
+
+  <!-- HLEDÁNÍ -->
+  <div class="card">
+    <h2>Najít kámen</h2>
+
+    <input id="code"
+           placeholder="Kód kamene, např. D-0001"
+           autocomplete="off"
+           autocapitalize="characters">
+
+    <button class="primary" onclick="loadStone()">
+      🔎 Zjistit stav
+    </button>
+
+    <div id="result"></div>
+  </div>
+
+  <!-- NOVÝ KÁMEN -->
+  <details class="card">
+    <summary>➕ Nový kámen</summary>
+
+    <hr>
+
+    <label>Druh</label>
+    <input id="newType" value="Diamant">
+
+    <label>Tvar</label>
+    <input id="newShape" placeholder="Round">
+
+    <label>Velikost</label>
+    <input id="newSize" placeholder="1.0">
+
+    <label>Barva</label>
+    <input id="newColor" placeholder="H">
+
+    <label>Čistota</label>
+    <input id="newClarity" placeholder="SI1">
+
+    <label>Počet</label>
+    <input id="newQuantity" type="number" min="0" step="1" value="1">
+
+    <label>Jednotka</label>
+    <input id="newUnit" value="ks">
+
+    <label>Pozice</label>
+    <input id="newLocation" placeholder="např. šuplík A3">
+
+    <label>Dodavatel</label>
+    <input id="newSupplier" placeholder="">
+
+    <label>Poznámka</label>
+    <textarea id="newNote"></textarea>
+
+    <button class="primary" onclick="createStone()">
+      💎 Vytvořit kámen
+    </button>
+
+    <div id="createResult"></div>
+  </details>
+
+  <!-- HISTORIE -->
+  <details class="card">
+    <summary>📜 Historie</summary>
+    <hr>
+    <button class="primary" onclick="loadHistory()">
+      Načíst historii
+    </button>
+    <div id="historyResult"></div>
+  </details>
+
+  <!-- ZAŘÍZENÍ -->
+  <div class="card">
+    <details>
+      <summary>⚙️ Telefon</summary>
+      <hr>
+
+      <div class="small">
+        ID zařízení:
+        <br>
+        <span id="deviceId"></span>
+      </div>
+
+      <br>
+
+      <button onclick="resetDevice()">
+        Zrušit autorizaci tohoto telefonu
+      </button>
+    </details>
+  </div>
+
 </div>
-
-<iframe
-  name="apiFrame"
-  id="apiFrame"
-  style="display:none">
-</iframe>
-
-<form
-  id="apiForm"
-  method="POST"
-  target="apiFrame"
-  style="display:none">
-
-<input
- type="hidden"
- name="payload"
- id="payload">
-
-</form>
 
 <script>
-
-/************************************************************
- * NOVÝ SKLAD – PROPOJENÍ
- ************************************************************/
+/* =========================================================
+   NASTAVENÍ
+   ========================================================= */
 
 const API_URL =
-"https://script.google.com/macros/s/AKfycbwyKqA4HwTpu5laHjqAz8QM45-2pAWEdpiK5e8yBpWvMcpdBQRv8wAdDucx3VTgySM/exec";
+  'https://script.google.com/macros/s/AKfycbzxw_flfqDBUxvL8askca7It_N-M-wjwV7nxYU-OHjr5Z1_XvcrRPciydJLUC8AGME/exec';
+
+const STORAGE_DEVICE_ID = 'inventoryDeviceId';
+const STORAGE_TOKEN = 'inventoryDeviceToken';
+
+/* Apps Script může odpověď doručit přes script.google.com
+   nebo přes script.googleusercontent.com. */
+const API_ORIGINS = new Set([
+  new URL(API_URL).origin,
+  'https://script.googleusercontent.com'
+]);
+
+let stone = null;
 
 
-/************************************************************
- * POVOLENÝ GITHUB ORIGIN
- ************************************************************/
+/* =========================================================
+   ZÁKLAD
+   ========================================================= */
 
-const GITHUB_ORIGIN =
-"https://zlatnicvi-konecni.github.io";
+function getDeviceId(){
+  let id = localStorage.getItem(STORAGE_DEVICE_ID);
 
+  if(!id){
+    id = (crypto.randomUUID)
+      ? crypto.randomUUID()
+      : 'dev-' + Date.now() + '-' + Math.random().toString(36).slice(2);
 
-/************************************************************
- * IDENTIFIKACE ZAŘÍZENÍ
- ************************************************************/
+    localStorage.setItem(STORAGE_DEVICE_ID,id);
+  }
 
-let deviceId =
-  localStorage.getItem("inventoryDeviceId");
+  return id;
+}
 
-let deviceToken =
-  localStorage.getItem("inventoryDeviceToken");
+function getToken(){
+  return localStorage.getItem(STORAGE_TOKEN) || '';
+}
 
+function setToken(token){
+  localStorage.setItem(STORAGE_TOKEN,token);
+}
 
-if (!deviceId) {
+function clearToken(){
+  localStorage.removeItem(STORAGE_TOKEN);
+}
 
-  deviceId =
-    crypto.randomUUID();
+function setStatus(text,error=false){
+  const el=document.getElementById('status');
+  el.textContent=text;
+  el.className=error ? 'status error' : 'status';
+}
 
-  localStorage.setItem(
-    "inventoryDeviceId",
-    deviceId
-  );
-
+function esc(value){
+  return String(value ?? '').replace(/[&<>"']/g,function(c){
+    return {
+      '&':'&amp;',
+      '<':'&lt;',
+      '>':'&gt;',
+      '"':'&quot;',
+      "'":'&#039;'
+    }[c];
+  });
 }
 
 
-/************************************************************
- * POST DO APPS SCRIPTU
- ************************************************************/
+/* =========================================================
+   KOMUNIKACE S APPS SCRIPTEM
+   ========================================================= */
 
-function postToAppsScript(data) {
+function callApi(request){
+  return new Promise(function(resolve,reject){
 
-  return new Promise((resolve, reject) => {
+    const iframe=document.createElement('iframe');
 
-    const requestId =
-      crypto.randomUUID();
+    iframe.name='api_' +
+      Date.now() +
+      '_' +
+      Math.random().toString(36).slice(2);
 
+    iframe.style.display='none';
 
-    const timeout =
-      setTimeout(() => {
+    document.body.appendChild(iframe);
 
-        window.removeEventListener(
-          "message",
-          listener
-        );
+    const form=document.createElement('form');
 
-        reject(
-          new Error(
-            "Server neodpověděl."
-          )
-        );
+    form.method='POST';
+    form.action=API_URL;
+    form.target=iframe.name;
+    form.style.display='none';
 
-      }, 30000);
+    const input=document.createElement('input');
 
+    input.type='hidden';
+    input.name='payload';
+    input.value=JSON.stringify(request);
 
-    function listener(event) {
+    form.appendChild(input);
+    document.body.appendChild(form);
 
-      if (
-        event.origin !== GITHUB_ORIGIN
-      ) {
-        return;
-      }
+    let finished=false;
 
+    function cleanup(){
+      if(finished) return;
+      finished=true;
 
-      if (
-        !event.data ||
-        event.data.type !==
-        "inventory-api"
-      ) {
-        return;
-      }
+      window.removeEventListener('message',onMessage);
 
-
-      clearTimeout(timeout);
-
-      window.removeEventListener(
-        "message",
-        listener
-      );
-
-
-      resolve(event.data);
-
+      setTimeout(function(){
+        form.remove();
+        iframe.remove();
+      },300);
     }
 
+    function onMessage(event){
 
-    window.addEventListener(
-      "message",
-      listener
-    );
+      if(!API_ORIGINS.has(event.origin)) return;
 
+      const data=event.data;
 
-    const payload =
-      JSON.stringify({
-        ...data,
-        requestId: requestId
-      });
+      if(!data || data.type!=='inventory-api') return;
 
+      cleanup();
 
-    document
-      .getElementById("payload")
-      .value = payload;
+      if(data.status==='OK'){
+        resolve(data.data);
+      }else{
+        reject(
+          new Error(data.error || 'SERVER_ERROR')
+        );
+      }
+    }
 
+    window.addEventListener('message',onMessage);
 
-    const form =
-      document.getElementById("apiForm");
+    const timeout=setTimeout(function(){
+      if(finished) return;
 
+      cleanup();
+      reject(new Error('TIMEOUT'));
+    },20000);
 
-    form.action =
-      API_URL;
-
-
-    form.submit();
+    Promise.resolve().then(function(){
+      if(finished) return;
+      form.submit();
+    }).catch(function(err){
+      clearTimeout(timeout);
+      cleanup();
+      reject(err);
+    });
 
   });
-
 }
 
 
-/************************************************************
- * VYHLEDÁNÍ
- ************************************************************/
+/* =========================================================
+   AUTORIZACE
+   ========================================================= */
 
-async function lookup() {
+async function registerDevice(){
 
-  const code =
-    document
-      .getElementById("code")
-      .value
-      .trim();
+  const key=document
+    .getElementById('registrationKey')
+    .value
+    .trim();
+
+  if(!key){
+    showRegistrationMessage(
+      'Zadej registrační klíč.',
+      true
+    );
+    return;
+  }
+
+  showRegistrationMessage('Registruji telefon…');
+
+  try{
+
+    const result=await callApi({
+      action:'register',
+      deviceId:getDeviceId(),
+      registrationKey:key
+    });
+
+    if(!result || !result.token){
+      throw new Error('SERVER_ERROR');
+    }
+
+    setToken(result.token);
+
+    document.getElementById('registrationKey').value='';
+
+    showRegistrationMessage(
+      'Telefon byl úspěšně autorizován.',
+      false
+    );
+
+    showApp();
+
+  }catch(error){
+
+    showRegistrationMessage(
+      readableError(error),
+      true
+    );
+  }
+}
+
+function showRegistrationMessage(text,error=false){
+  const el=document.getElementById('registrationResult');
+  el.textContent=text;
+  el.className=error ? 'small error' : 'small success';
+}
 
 
-  if (!code) {
+/* =========================================================
+   START
+   ========================================================= */
 
-    showError(
-      "Zadej kód kamene."
+function init(){
+
+  document.getElementById('deviceId').textContent=getDeviceId();
+
+  if(getToken()){
+    showApp();
+  }else{
+    showRegistration();
+  }
+}
+
+function showRegistration(){
+
+  document
+    .getElementById('registration')
+    .classList.remove('hidden');
+
+  document
+    .getElementById('app')
+    .classList.add('hidden');
+
+  setStatus('Telefon čeká na autorizaci.');
+}
+
+async function showApp(){
+
+  document
+    .getElementById('registration')
+    .classList.add('hidden');
+
+  document
+    .getElementById('app')
+    .classList.remove('hidden');
+
+  setStatus('Autorizováno');
+
+  /* Ověření tokenu jednoduchým dotazem.
+     Pokud zařízení už není povolené, vrátíme uživatele
+     na registraci. */
+  try{
+    await callApi({
+      action:'get',
+      deviceId:getDeviceId(),
+      token:getToken(),
+      code:'D-0000'
+    });
+  }catch(error){
+
+    if(
+      error.message==='UNAUTHORIZED_DEVICE' ||
+      error.message==='DEVICE_BLOCKED'
+    ){
+      clearToken();
+      showRegistration();
+      showRegistrationMessage(
+        'Tento telefon už není autorizovaný. Zaregistruj ho znovu.',
+        true
+      );
+    }
+  }
+}
+
+
+/* =========================================================
+   HLEDÁNÍ KAMENE
+   ========================================================= */
+
+async function loadStone(){
+
+  const code=document
+    .getElementById('code')
+    .value
+    .trim()
+    .toUpperCase();
+
+  if(!code) return;
+
+  setResult('Hledám…');
+
+  try{
+
+    const result=await callApi({
+      action:'get',
+      deviceId:getDeviceId(),
+      token:getToken(),
+      code:code
+    });
+
+    showStone(result);
+
+  }catch(error){
+
+    handleApiError(error);
+  }
+}
+
+
+/* =========================================================
+   ZOBRAZENÍ KAMENE
+   ========================================================= */
+
+function showStone(s){
+
+  stone=s;
+
+  const result=document.getElementById('result');
+
+  result.innerHTML=`
+    <div class="card">
+
+      <div class="code">${esc(s.code)}</div>
+
+      <div class="details">
+        <b>${esc(s.type)}</b>
+        ${s.shape ? ' · '+esc(s.shape) : ''}
+        <br>
+
+        ${s.size ? esc(s.size)+' mm' : ''}
+        ${s.color ? ' · '+esc(s.color) : ''}
+        ${s.clarity ? ' · '+esc(s.clarity) : ''}
+        <br>
+
+        ${s.location ? 'Pozice: '+esc(s.location) : ''}
+      </div>
+
+      <div class="stock">
+        ${esc(s.quantity)} ${esc(s.unit || 'ks')}
+      </div>
+
+      <div class="row">
+        <button class="minus" onclick="moveStock(-5)">−5</button>
+        <button class="minus" onclick="moveStock(-2)">−2</button>
+        <button class="minus" onclick="moveStock(-1)">−1</button>
+      </div>
+
+      <div class="row">
+        <button onclick="moveStock(1)">+1</button>
+        <button onclick="moveStock(5)">+5</button>
+      </div>
+
+    </div>
+  `;
+}
+
+function setResult(text){
+
+  document.getElementById('result').innerHTML=
+    '<div class="card">'+esc(text)+'</div>';
+}
+
+
+/* =========================================================
+   SKLADOVÝ POHYB
+   ========================================================= */
+
+async function moveStock(amount){
+
+  if(!stone) return;
+
+  try{
+
+    const result=await callApi({
+      action:'stock',
+      deviceId:getDeviceId(),
+      token:getToken(),
+      code:stone.code,
+      amount:amount,
+      note:'Mobil'
+    });
+
+    stone.quantity=result.newStock;
+
+    showStone({
+      ...stone,
+      quantity:result.newStock
+    });
+
+  }catch(error){
+
+    handleApiError(error);
+  }
+}
+
+
+/* =========================================================
+   NOVÝ KÁMEN
+   ========================================================= */
+
+async function createStone(){
+
+  const quantity=document
+    .getElementById('newQuantity')
+    .value;
+
+  try{
+
+    const result=await callApi({
+      action:'create',
+      deviceId:getDeviceId(),
+      token:getToken(),
+
+      type:document.getElementById('newType').value,
+      shape:document.getElementById('newShape').value,
+      size:document.getElementById('newSize').value,
+      color:document.getElementById('newColor').value,
+      clarity:document.getElementById('newClarity').value,
+
+      quantity:quantity,
+      unit:document.getElementById('newUnit').value,
+      location:document.getElementById('newLocation').value,
+      supplier:document.getElementById('newSupplier').value,
+      note:document.getElementById('newNote').value
+    });
+
+    document.getElementById('createResult').innerHTML=
+      `<div class="success">
+        Vytvořeno. Kód kamene:
+        <div class="code">${esc(result.code)}</div>
+      </div>`;
+
+    document.getElementById('code').value=result.code;
+
+    await loadStone();
+
+  }catch(error){
+
+    document.getElementById('createResult').innerHTML=
+      `<div class="error">${esc(readableError(error))}</div>`;
+  }
+}
+
+
+/* =========================================================
+   HISTORIE
+   ========================================================= */
+
+async function loadHistory(){
+
+  const box=document.getElementById('historyResult');
+
+  box.innerHTML='Načítám…';
+
+  try{
+
+    const rows=await callApi({
+      action:'history',
+      deviceId:getDeviceId(),
+      token:getToken()
+    });
+
+    if(!rows || rows.length===0){
+      box.innerHTML='<p>Historie je prázdná.</p>';
+      return;
+    }
+
+    box.innerHTML=rows.map(function(r){
+
+      const change=Number(r.amount || 0);
+
+      return `
+        <div style="padding:10px 0;border-bottom:1px solid #ddd">
+          <b>${esc(r.code)}</b><br>
+          ${esc(r.operation)}
+          :
+          <b>${change>0?'+':''}${change}</b>
+          → stav ${esc(r.stock)}
+          <br>
+          <span class="small">${esc(r.note || '')}</span>
+        </div>
+      `;
+
+    }).join('');
+
+  }catch(error){
+
+    box.innerHTML=
+      `<div class="error">${esc(readableError(error))}</div>`;
+  }
+}
+
+
+/* =========================================================
+   CHYBY
+   ========================================================= */
+
+function handleApiError(error){
+
+  const code=error && error.message
+    ? error.message
+    : String(error);
+
+  if(
+    code==='UNAUTHORIZED_DEVICE' ||
+    code==='DEVICE_BLOCKED'
+  ){
+
+    clearToken();
+    showRegistration();
+
+    showRegistrationMessage(
+      'Telefon není autorizovaný nebo byl zablokovaný.',
+      true
     );
 
     return;
   }
 
+  setResult(readableError(error));
+}
 
-  showMessage(
-    "Hledám..."
+function readableError(error){
+
+  const code=error && error.message
+    ? error.message
+    : String(error);
+
+  const messages={
+    TIMEOUT:'Server neodpověděl včas.',
+    STONE_NOT_FOUND:'Kámen s tímto kódem nebyl nalezen.',
+    UNAUTHORIZED_DEVICE:'Telefon není autorizovaný.',
+    DEVICE_BLOCKED:'Tento telefon byl zablokován.',
+    RATE_LIMITED:'Příliš mnoho požadavků. Chvíli počkej.',
+    INVALID_REGISTRATION_KEY:'Registrační klíč není správný.',
+    REGISTRATION_EXPIRED:'Registrační klíč už vypršel.',
+    REGISTRATION_DISABLED:'Registrace je momentálně vypnutá.',
+    INVALID_CODE:'Neplatný kód kamene.',
+    MISSING_CODE:'Chybí kód kamene.',
+    INVALID_QUANTITY:'Neplatné množství.',
+    STOCK_NEGATIVE:'Nelze vydat více kusů, než je na skladě.',
+    SERVER_ERROR:'Chyba serveru.'
+  };
+
+  return messages[code] || code;
+}
+
+
+/* =========================================================
+   RESET TELEFONU
+   ========================================================= */
+
+function resetDevice(){
+
+  clearToken();
+
+  document.getElementById('result').innerHTML='';
+  document.getElementById('registrationResult').innerHTML='';
+
+  showRegistration();
+
+  showRegistrationMessage(
+    'Autorizace tohoto telefonu byla lokálně odstraněna.',
+    false
   );
+}
 
 
-  try {
+/* =========================================================
+   ENTER V KÓDU
+   ========================================================= */
 
-    const result =
-      await postToAppsScript({
-
-        action: "get",
-
-        code: code,
-
-        deviceId: deviceId,
-
-        token: deviceToken
-
-      });
-
-
-    if (
-      result.status !== "OK"
-    ) {
-
-      showError(
-        result.error ||
-        "Chyba."
-      );
-
-      return;
-    }
-
-
-    const stone =
-      result.data;
-
-
-    if (!stone) {
-
-      showError(
-        "Kámen nebyl nalezen."
-      );
-
-      return;
-    }
-
-
-    showStone(stone);
-
-
-  } catch (err) {
-
-    showError(
-      err.message
-    );
-
+document.getElementById('code').addEventListener(
+  'keydown',
+  function(event){
+    if(event.key==='Enter') loadStone();
   }
-
-}
-
-
-/************************************************************
- * ZOBRAZENÍ
- ************************************************************/
-
-function showStone(stone) {
-
-  document
-    .getElementById("result")
-    .innerHTML = `
-
-      <h2>${escapeHtml(stone.code)}</h2>
-
-      <p>
-        <strong>Druh:</strong>
-        ${escapeHtml(stone.type)}
-      </p>
-
-      <p>
-        <strong>Tvar:</strong>
-        ${escapeHtml(stone.shape)}
-      </p>
-
-      <p>
-        <strong>Velikost:</strong>
-        ${escapeHtml(stone.size)}
-      </p>
-
-      <p>
-        <strong>Barva:</strong>
-        ${escapeHtml(stone.color)}
-      </p>
-
-      <p>
-        <strong>Čistota:</strong>
-        ${escapeHtml(stone.clarity)}
-      </p>
-
-      <p>
-        <strong>Stav:</strong>
-        <strong>
-          ${escapeHtml(String(stone.quantity))}
-          ${escapeHtml(stone.unit)}
-        </strong>
-      </p>
-
-      <p>
-        <strong>Pozice:</strong>
-        ${escapeHtml(stone.location)}
-      </p>
-
-      <p>
-        <strong>Dodavatel:</strong>
-        ${escapeHtml(stone.supplier)}
-      </p>
-
-      <p>
-        ${escapeHtml(stone.note)}
-      </p>
-    `;
-}
+);
 
 
-/************************************************************
- * POMOCNÉ FUNKCE
- ************************************************************/
+/* =========================================================
+   SPUŠTĚNÍ
+   ========================================================= */
 
-function showMessage(message) {
-
-  document
-    .getElementById("result")
-    .innerHTML =
-      `<p>${escapeHtml(message)}</p>`;
-
-}
-
-
-function showError(message) {
-
-  document
-    .getElementById("result")
-    .innerHTML =
-      `<p class="error">
-        ${escapeHtml(message)}
-      </p>`;
-
-}
-
-
-function escapeHtml(value) {
-
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
-
-}
+init();
 
 </script>
 
